@@ -16,7 +16,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* 
+/*
    This is the APMrover2 firmware. It was originally derived from
    ArduPlane by Jean-Louis Naudin (JLN), and then rewritten after the
    AP_HAL merge by Andrew Tridgell
@@ -25,9 +25,9 @@
 
    Authors:    Doug Weibel, Jose Julio, Jordi Munoz, Jason Short, Andrew Tridgell, Randy Mackay, Pat Hickey, John Arne Birkeland, Olivier Adler, Jean-Louis Naudin
 
-   Thanks to:  Chris Anderson, Michael Oborne, Paul Mather, Bill Premerlani, James Cohen, JB from rotorFX, Automatik, Fefenin, Peter Meister, Remzibi, Yury Smirnov, Sandro Benigno, Max Levine, Roberto Navoni, Lorenz Meier 
+   Thanks to:  Chris Anderson, Michael Oborne, Paul Mather, Bill Premerlani, James Cohen, JB from rotorFX, Automatik, Fefenin, Peter Meister, Remzibi, Yury Smirnov, Sandro Benigno, Max Levine, Roberto Navoni, Lorenz Meier
 
-   APMrover alpha version tester: Franco Borasio, Daniel Chapelat... 
+   APMrover alpha version tester: Franco Borasio, Daniel Chapelat...
 
    Please contribute your ideas! See http://dev.ardupilot.com for details
 */
@@ -269,7 +269,7 @@ SITL sitl;
 static const uint8_t num_gcs = MAVLINK_COMM_NUM_BUFFERS;
 static GCS_MAVLINK gcs[MAVLINK_COMM_NUM_BUFFERS];
 
-// a pin for reading the receiver RSSI voltage. The scaling by 0.25 
+// a pin for reading the receiver RSSI voltage. The scaling by 0.25
 // is to take the 0 to 1024 range down to an 8 bit range for MAVLink
 AP_HAL::AnalogSource *rssi_analog_source;
 
@@ -339,7 +339,7 @@ static bool rc_override_active = false;
 // Failsafe
 ////////////////////////////////////////////////////////////////////////////////
 // A tracking variable for type of failsafe active
-// Used for failsafe based on loss of RC signal or GCS signal. See 
+// Used for failsafe based on loss of RC signal or GCS signal. See
 // FAILSAFE_EVENT_*
 static struct {
     uint8_t bits;
@@ -373,7 +373,7 @@ static bool rtl_complete = false;
 static int32_t next_navigation_leg_cd;
 
 // ground speed error in m/s
-static float	groundspeed_error;	
+static float	groundspeed_error;
 // 0-(throttle_max - throttle_cruise) : throttle nudge in Auto mode using top 1/2 of throttle stick travel
 static int16_t     throttle_nudge = 0;
 
@@ -470,7 +470,7 @@ static struct  	Location guided_WP;
 ////////////////////////////////////////////////////////////////////////////////
 // The main loop execution time.  Seconds
 //This is the time between calls to the DCM algorithm and is the Integration time for the gyros.
-static float G_Dt						= 0.02;		
+static float G_Dt						= 0.02;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Performance monitoring
@@ -483,7 +483,7 @@ static uint32_t 	G_Dt_max;
 ////////////////////////////////////////////////////////////////////////////////
 // System Timers
 ////////////////////////////////////////////////////////////////////////////////
-// Time in microseconds of start of main control loop. 
+// Time in microseconds of start of main control loop.
 static uint32_t 	fast_loopTimer_us;
 // Number of milliseconds used in last main loop cycle
 static uint32_t		delta_us_fast_loop;
@@ -531,10 +531,9 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
     { update_notify,          1,    300 },
     { one_second_loop,       50,   3000 },
 #if FRSKY_TELEM_ENABLED == ENABLED
-    { telemetry_send,        10,    100 }	
+    { telemetry_send,        10,    100 }
 #endif
 };
-
 
 /*
   setup is called when the sketch starts
@@ -656,7 +655,7 @@ static void compass_accumulate(void)
 {
     if (g.compass_enabled) {
         compass.accumulate();
-    }    
+    }
 }
 
 /*
@@ -683,7 +682,7 @@ static void update_logging1(void)
 {
     if (should_log(MASK_LOG_ATTITUDE_MED) && !should_log(MASK_LOG_ATTITUDE_FAST))
         Log_Write_Attitude();
-    
+
     if (should_log(MASK_LOG_CTUN))
         Log_Write_Control_Tuning();
 
@@ -713,7 +712,7 @@ static void update_logging2(void)
 static void update_aux(void)
 {
     RC_Channel_aux::enable_aux_servos();
-        
+
 #if MOUNT == ENABLED
     camera_mount.update_mount_type();
 #endif
@@ -760,7 +759,7 @@ static void one_second_loop(void)
     }
 
     // save compass offsets once a minute
-    if (counter >= 60) {				
+    if (counter >= 60) {
         if (g.compass_enabled) {
             compass.save_offsets();
         }
@@ -769,7 +768,7 @@ static void one_second_loop(void)
 }
 
 static void update_GPS_50Hz(void)
-{        
+{
     static uint32_t last_gps_reading[GPS_MAX_INSTANCES];
 	gps.update();
 
@@ -785,7 +784,7 @@ static void update_GPS_50Hz(void)
 
 
 static void update_GPS_10Hz(void)
-{        
+{
     have_position = ahrs.get_position(current_loc);
 
 	if (have_position && gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
@@ -823,12 +822,21 @@ static void update_GPS_10Hz(void)
         if (camera.update_location(current_loc) == true) {
             do_take_picture();
         }
-#endif        
+#endif
 	}
 }
 
+/*static void send_msg(char* msg)
+{
+  for (uint8_t i=0; i<num_gcs; i++) {
+    if (gcs[i].initialised) {
+      gcs[i].send_text(SEVERITY_LOW, ((const char*)(msg)));
+    }
+  }
+}*/
+
 static void update_current_mode(void)
-{ 
+{
     switch (control_mode){
     case AUTO:
     case RTL:
@@ -877,7 +885,7 @@ static void update_current_mode(void)
           logging
          */
         channel_throttle->servo_out = channel_throttle->control_in;
-        channel_steer->servo_out = channel_steer->pwm_to_angle();
+        channel_steer->servo_out = channel_steer->control_in; //channel_steer->pwm_to_angle();
 
         // mark us as in_reverse when using a negative throttle to
         // stop AHRS getting off
@@ -915,7 +923,7 @@ static void update_navigation()
         // no loitering around the wp with the rover, goes direct to the wp position
         calc_lateral_acceleration();
         calc_nav_steer();
-        if (verify_RTL()) {  
+        if (verify_RTL()) {
             channel_throttle->servo_out = g.throttle_min.get();
             set_mode(HOLD);
         }
